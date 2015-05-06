@@ -32,34 +32,34 @@ IntervalTimer::ISRcallback IntervalTimer::SIT_CALLBACK[];
 // TIM2, TIM3 and TIM4 with callbacks to user code.
 // These default as infinite loop stubs by Spark
 // ------------------------------------------------------------
-extern "C" void Wiring_TIM2_Interrupt_Handler_override()
+extern "C" void HAL_TIM2_Handler_override()
 {
-	if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET)
-	{
-		TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
-		//ISR for TIM2 code here
-		IntervalTimer::SIT_CALLBACK[0]();
-	}
+    if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
+        //ISR for TIM2 code here
+        IntervalTimer::SIT_CALLBACK[0]();
+    }
 }
 
-extern "C" void Wiring_TIM3_Interrupt_Handler_override()
+extern "C" void HAL_TIM3_Handler_override()
 {
-	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET)
-	{
-		TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
-		//ISR code for TIM3 here
-		IntervalTimer::SIT_CALLBACK[1]();
-	}
+    if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+        //ISR code for TIM3 here
+        IntervalTimer::SIT_CALLBACK[1]();
+    }
 }
 
-extern "C" void Wiring_TIM4_Interrupt_Handler_override()
+extern "C" void HAL_TIM4_Handler_override()
 {
-	if (TIM_GetITStatus(TIM4, TIM_IT_Update) != RESET)
-	{
-		TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
-		//ISR code for TIM3 here
-		IntervalTimer::SIT_CALLBACK[2]();
-	}
+    if (TIM_GetITStatus(TIM4, TIM_IT_Update) != RESET)
+    {
+        TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
+        //ISR code for TIM3 here
+        IntervalTimer::SIT_CALLBACK[2]();
+    }
 }
 
 
@@ -76,28 +76,28 @@ extern "C" void Wiring_TIM4_Interrupt_Handler_override()
 // ------------------------------------------------------------
 bool IntervalTimer::beginCycles(void (*isrCallback)(), uint16_t Period, bool scale, TIMid id) {
 
-	// if this interval timer is already running, stop and deallocate it
-	if (status == TIMER_SIT) {
-		stop_SIT();
-		status = TIMER_OFF;
-	}
-	// store callback pointer
-	myISRcallback = isrCallback;
+    // if this interval timer is already running, stop and deallocate it
+    if (status == TIMER_SIT) {
+        stop_SIT();
+        status = TIMER_OFF;
+    }
+    // store callback pointer
+    myISRcallback = isrCallback;
 
-	if (id > NUM_SIT) {		// Allocate specified timer (id=0 to 3) or auto-allocate from pool (id=255)
-		// attempt to allocate this timer
-		if (allocate_SIT(Period, scale, AUTO)) status = TIMER_SIT;		//255 means allocate from pool
-		else status = TIMER_OFF;
-	}
-	else {
-		// attempt to allocate this timer
-		if (allocate_SIT(Period, scale, id)) status = TIMER_SIT;		//0-3 so directly allocate
-		else status = TIMER_OFF;
-	}
+    if (id > NUM_SIT) {     // Allocate specified timer (id=0 to 3) or auto-allocate from pool (id=255)
+        // attempt to allocate this timer
+        if (allocate_SIT(Period, scale, AUTO)) status = TIMER_SIT;      //255 means allocate from pool
+        else status = TIMER_OFF;
+    }
+    else {
+        // attempt to allocate this timer
+        if (allocate_SIT(Period, scale, id)) status = TIMER_SIT;        //0-3 so directly allocate
+        else status = TIMER_OFF;
+    }
 
-	// check for success and return
-	if (status != TIMER_OFF) return true;
-	return false;
+    // check for success and return
+    if (status != TIMER_OFF) return true;
+    return false;
 
 }
 
@@ -110,28 +110,28 @@ bool IntervalTimer::beginCycles(void (*isrCallback)(), uint16_t Period, bool sca
 // ------------------------------------------------------------
 bool IntervalTimer::allocate_SIT(uint16_t Period, bool scale, TIMid id) {
 
-	if (id < NUM_SIT) {		// Allocate specified timer (id=TIMER2/3/4) or auto-allocate from pool (id=AUTO)
-		if (!SIT_used[id]) {
-			SIT_id = id;
-			start_SIT(Period, scale);
-			SIT_used[id] = true;
-			return true;
-		}
-	}
-	else {	
-		// Auto allocate - check for an available SIT, and if so, start it
-		for (uint8_t tid = 0; tid < NUM_SIT; tid++) {
-			if (!SIT_used[tid]) {
-				SIT_id = tid;
-				start_SIT(Period, scale);
-				SIT_used[tid] = true;
-				return true;
-			}
-		}
-	}
-	
-	// Specified or no auto-allocate SIT available
-	return false;
+    if (id < NUM_SIT) {     // Allocate specified timer (id=TIMER2/3/4) or auto-allocate from pool (id=AUTO)
+        if (!SIT_used[id]) {
+            SIT_id = id;
+            start_SIT(Period, scale);
+            SIT_used[id] = true;
+            return true;
+        }
+    }
+    else {
+        // Auto allocate - check for an available SIT, and if so, start it
+        for (uint8_t tid = 0; tid < NUM_SIT; tid++) {
+            if (!SIT_used[tid]) {
+                SIT_id = tid;
+                start_SIT(Period, scale);
+                SIT_used[tid] = true;
+                return true;
+            }
+        }
+    }
+
+    // Specified or no auto-allocate SIT available
+    return false;
 }
 
 
@@ -142,58 +142,62 @@ bool IntervalTimer::allocate_SIT(uint16_t Period, bool scale, TIMid id) {
 // ------------------------------------------------------------
 void IntervalTimer::start_SIT(uint16_t Period, bool scale) {
 
-	TIM_TimeBaseInitTypeDef timerInitStructure;
+    TIM_TimeBaseInitTypeDef timerInitStructure;
     NVIC_InitTypeDef nvicStructure;
-	uint16_t prescaler;
-	TIM_TypeDef* TIMx;
-	
-	//use SIT_id to identify TIM#
-	switch (SIT_id) {
-	case 0:		// TIM2
-		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
-		nvicStructure.NVIC_IRQChannel = TIM2_IRQn;
-		TIMx = TIM2;
-		break;
-	case 1:		// TIM3
-		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
-		nvicStructure.NVIC_IRQChannel = TIM3_IRQn;
-		TIMx = TIM3;
-		break;
-	case 2:		// TIM4
-		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
-		nvicStructure.NVIC_IRQChannel = TIM4_IRQn;
-		TIMx = TIM4;
-		break;
-	}
-	
-	// Initialize Timer
-	switch (scale) {
-		case uSec:
-			prescaler = SIT_PRESCALERu;	// Set prescaler for 1MHz clock, 1us period
-			break;
-		case hmSec:
-			prescaler = SIT_PRESCALERm;	// Set prescaler for 2Hz clock, .5ms period
-			break;
-		default:
-			scale == uSec;				// Default to microseconds
-			prescaler = SIT_PRESCALERu;
-			break;
-	}
+    uint16_t prescaler;
+    TIM_TypeDef* TIMx;
 
-	timerInitStructure.TIM_Prescaler = prescaler;
-	timerInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	timerInitStructure.TIM_Period = Period;
-	timerInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
-	timerInitStructure.TIM_RepetitionCounter = 0;
+    //use SIT_id to identify TIM#
+    switch (SIT_id) {
+    case 0:     // TIM2
+        RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+        nvicStructure.NVIC_IRQChannel = TIM2_IRQn;
+        TIMx = TIM2;
+        break;
+    case 1:     // TIM3
+        RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+        nvicStructure.NVIC_IRQChannel = TIM3_IRQn;
+        TIMx = TIM3;
+        break;
+    case 2:     // TIM4
+        RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+        nvicStructure.NVIC_IRQChannel = TIM4_IRQn;
+        TIMx = TIM4;
+        break;
+    default:    // TIM2
+        RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+        nvicStructure.NVIC_IRQChannel = TIM2_IRQn;
+        TIMx = TIM2;
+        break;
+    }
 
-	TIM_TimeBaseInit(TIMx, &timerInitStructure);
-	TIM_Cmd(TIMx, ENABLE);
-	TIM_ITConfig(TIMx, TIM_IT_Update, ENABLE);
+    // Initialize Timer
+    switch (scale) {
+        case uSec:
+            prescaler = SIT_PRESCALERu; // Set prescaler for 1MHz clock, 1us period
+            break;
+        case hmSec:
+            prescaler = SIT_PRESCALERm; // Set prescaler for 2Hz clock, .5ms period
+            break;
+        default:
+            prescaler = SIT_PRESCALERu;
+            break;
+    }
 
-	// point to the correct SIT ISR
-	SIT_CALLBACK[SIT_id] = myISRcallback;
+    timerInitStructure.TIM_Prescaler = prescaler;
+    timerInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
+    timerInitStructure.TIM_Period = Period;
+    timerInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+    timerInitStructure.TIM_RepetitionCounter = 0;
 
-	//Enable Timer Interrupt
+    TIM_TimeBaseInit(TIMx, &timerInitStructure);
+    TIM_Cmd(TIMx, ENABLE);
+    TIM_ITConfig(TIMx, TIM_IT_Update, ENABLE);
+
+    // point to the correct SIT ISR
+    SIT_CALLBACK[SIT_id] = myISRcallback;
+
+    //Enable Timer Interrupt
     nvicStructure.NVIC_IRQChannelPreemptionPriority = 10;
     nvicStructure.NVIC_IRQChannelSubPriority = 0;
     nvicStructure.NVIC_IRQChannelCmd = ENABLE;
@@ -206,8 +210,8 @@ void IntervalTimer::start_SIT(uint16_t Period, bool scale) {
 // to determine what hardware resources the timer may be using
 // ------------------------------------------------------------
 void IntervalTimer::end() {
-	if (status == TIMER_SIT) stop_SIT();
-	status = TIMER_OFF;
+    if (status == TIMER_SIT) stop_SIT();
+    status = TIMER_OFF;
 }
 
 
@@ -218,36 +222,41 @@ void IntervalTimer::end() {
 void IntervalTimer::stop_SIT() {
 
     NVIC_InitTypeDef nvicStructure;
-	TIM_TypeDef* TIMx;
+    TIM_TypeDef* TIMx;
 
 
-	//use SIT_id to identify TIM#
-	switch (SIT_id) {
-	case 0:		// TIM2
-		nvicStructure.NVIC_IRQChannel = TIM2_IRQn;
-		TIMx = TIM2;
-		break;
-	case 1:		// TIM3
-		nvicStructure.NVIC_IRQChannel = TIM3_IRQn;
-		TIMx = TIM3;
-		break;
-	case 2:		// TIM4
-		nvicStructure.NVIC_IRQChannel = TIM4_IRQn;
-		TIMx = TIM4;
-		break;
-	}
-	// disable counter
-	TIM_Cmd(TIMx, DISABLE);
-	
-	// disable interrupt
+    //use SIT_id to identify TIM#
+    switch (SIT_id) {
+    case 0:     // TIM2
+        nvicStructure.NVIC_IRQChannel = TIM2_IRQn;
+        TIMx = TIM2;
+        break;
+    case 1:     // TIM3
+        nvicStructure.NVIC_IRQChannel = TIM3_IRQn;
+        TIMx = TIM3;
+        break;
+    case 2:     // TIM4
+        nvicStructure.NVIC_IRQChannel = TIM4_IRQn;
+        TIMx = TIM4;
+        break;
+    default:    // TIM2
+        RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+        nvicStructure.NVIC_IRQChannel = TIM2_IRQn;
+        TIMx = TIM2;
+        break;
+    }
+    // disable counter
+    TIM_Cmd(TIMx, DISABLE);
+
+    // disable interrupt
     nvicStructure.NVIC_IRQChannelCmd = DISABLE;
     NVIC_Init(&nvicStructure);
-	
-	// disable timer peripheral
-	TIM_DeInit(TIMx);
-	
-	// free SIT for future use
-	SIT_used[SIT_id] = false;
+
+    // disable timer peripheral
+    TIM_DeInit(TIMx);
+
+    // free SIT for future use
+    SIT_used[SIT_id] = false;
 }
 
 
@@ -258,41 +267,40 @@ void IntervalTimer::stop_SIT() {
 void IntervalTimer::interrupt_SIT(action ACT)
 {
     NVIC_InitTypeDef nvicStructure;
-	TIM_TypeDef* TIMx;
 
-	//use SIT_id to identify TIM#
-	switch (SIT_id) {
-	case 0:		// TIM2
-		nvicStructure.NVIC_IRQChannel = TIM2_IRQn;
-		TIMx = TIM2;
-		break;
-	case 1:		// TIM3
-		nvicStructure.NVIC_IRQChannel = TIM3_IRQn;
-		TIMx = TIM3;
-		break;
-	case 2:		// TIM4
-		nvicStructure.NVIC_IRQChannel = TIM4_IRQn;
-		TIMx = TIM4;
-		break;
-	}
+    //use SIT_id to identify TIM#
+    switch (SIT_id) {
+    case 0:     // TIM2
+        nvicStructure.NVIC_IRQChannel = TIM2_IRQn;
+        break;
+    case 1:     // TIM3
+        nvicStructure.NVIC_IRQChannel = TIM3_IRQn;
+        break;
+    case 2:     // TIM4
+        nvicStructure.NVIC_IRQChannel = TIM4_IRQn;
+        break;
+    default:    // TIM2
+        nvicStructure.NVIC_IRQChannel = TIM2_IRQn;
+        break;
+    }
 
-	switch (ACT) {
-	case INT_ENABLE:
-		//Enable Timer Interrupt
-		nvicStructure.NVIC_IRQChannelPreemptionPriority = 10;
-		nvicStructure.NVIC_IRQChannelSubPriority = 0;
-		nvicStructure.NVIC_IRQChannelCmd = ENABLE;
-		NVIC_Init(&nvicStructure);
-		break;
-	case INT_DISABLE:
-		// disable interrupt
-		nvicStructure.NVIC_IRQChannelCmd = DISABLE;
-		NVIC_Init(&nvicStructure);
-		break;
-	default:
-		//Do nothing
-		break;
-	}
+    switch (ACT) {
+    case INT_ENABLE:
+        //Enable Timer Interrupt
+        nvicStructure.NVIC_IRQChannelPreemptionPriority = 10;
+        nvicStructure.NVIC_IRQChannelSubPriority = 0;
+        nvicStructure.NVIC_IRQChannelCmd = ENABLE;
+        NVIC_Init(&nvicStructure);
+        break;
+    case INT_DISABLE:
+        // disable interrupt
+        nvicStructure.NVIC_IRQChannelCmd = DISABLE;
+        NVIC_Init(&nvicStructure);
+        break;
+    default:
+        //Do nothing
+        break;
+    }
 }
 
 
@@ -302,40 +310,42 @@ void IntervalTimer::interrupt_SIT(action ACT)
 // ------------------------------------------------------------
 void IntervalTimer::resetPeriod_SIT(uint16_t newPeriod, bool scale)
 {
-	TIM_TimeBaseInitTypeDef timerInitStructure;
-	TIM_TypeDef* TIMx;
-	uint16_t prescaler;
+    TIM_TypeDef* TIMx;
+    uint16_t prescaler;
 
-	//use SIT_id to identify TIM#
-	switch (SIT_id) {
-	case 0:		// TIM2
-		TIMx = TIM2;
-		break;
-	case 1:		// TIM3
-		TIMx = TIM3;
-		break;
-	case 2:		// TIM4
-		TIMx = TIM4;
-		break;
-	}
+    //use SIT_id to identify TIM#
+    switch (SIT_id) {
+    case 0:     // TIM2
+        TIMx = TIM2;
+        break;
+    case 1:     // TIM3
+        TIMx = TIM3;
+        break;
+    case 2:     // TIM4
+        TIMx = TIM4;
+        break;
+    default:    // TIM2
+        TIMx = TIM2;
+        break;
+    }
 
-	switch (scale) {
-	case uSec:
-		prescaler = SIT_PRESCALERu;	// Set prescaler for 1MHz clock, 1us period
-		break;
-	case hmSec:
-		prescaler = SIT_PRESCALERm;	// Set prescaler for 2Hz clock, .5ms period
-		break;
-	default:
-		scale = uSec;				// Default to microseconds
-		prescaler = SIT_PRESCALERu;
-		break;
-	}
+    switch (scale) {
+    case uSec:
+        prescaler = SIT_PRESCALERu; // Set prescaler for 1MHz clock, 1us period
+        break;
+    case hmSec:
+        prescaler = SIT_PRESCALERm; // Set prescaler for 2Hz clock, .5ms period
+        break;
+    default:
+        scale = uSec;               // Default to microseconds
+        prescaler = SIT_PRESCALERu;
+        break;
+    }
 
-	TIMx->ARR = newPeriod;
-	TIMx->PSC = prescaler;
-	TIMx->EGR = TIM_PSCReloadMode_Immediate;
-	TIM_ClearITPendingBit(TIMx, TIM_IT_Update);
+    TIMx->ARR = newPeriod;
+    TIMx->PSC = prescaler;
+    TIMx->EGR = TIM_PSCReloadMode_Immediate;
+    TIM_ClearITPendingBit(TIMx, TIM_IT_Update);
 }
 
 // ------------------------------------------------------------
@@ -344,8 +354,8 @@ void IntervalTimer::resetPeriod_SIT(uint16_t newPeriod, bool scale)
 // ------------------------------------------------------------
 int8_t IntervalTimer::isAllocated_SIT(void)
 {
-	if (status == TIMER_SIT)
-		return SIT_id;
-	else 
-		return -1;
+    if (status == TIMER_SIT)
+        return SIT_id;
+    else
+        return -1;
 }

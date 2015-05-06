@@ -26,70 +26,71 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #include "application.h"
 
 
-enum {uSec, hmSec};			// microseconds or half-milliseconds
+enum {uSec, hmSec};         // microseconds or half-milliseconds
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern void (*Wiring_TIM2_Interrupt_Handler)(void);
-extern void (*Wiring_TIM3_Interrupt_Handler)(void);
-extern void (*Wiring_TIM4_Interrupt_Handler)(void);
+extern void (*HAL_TIM2_Handler)(void);
+extern void (*HAL_TIM3_Handler)(void);
+extern void (*HAL_TIM4_Handler)(void);
 
-extern void Wiring_TIM2_Interrupt_Handler_override(void);
-extern void Wiring_TIM3_Interrupt_Handler_override(void);
-extern void Wiring_TIM4_Interrupt_Handler_override(void);
+extern void HAL_TIM2_Handler_override(void);
+extern void HAL_TIM3_Handler_override(void);
+extern void HAL_TIM4_Handler_override(void);
 
 enum action {INT_DISABLE, INT_ENABLE};
 enum TIMid {TIMER2, TIMER3, TIMER4, AUTO=255};
 
+
 class IntervalTimer {
   private:
-	typedef void (*ISRcallback)();
+    typedef void (*ISRcallback)();
     enum {TIMER_OFF, TIMER_SIT};
     static const uint8_t NUM_SIT = 3;
-	
-	// Timer ClockDivision = DIV4
-	const uint16_t SIT_PRESCALERu = (uint16_t)(SystemCoreClock / 1000000) - 1;	//To get TIM counter clock = 1MHz
-	const uint16_t SIT_PRESCALERm = (uint16_t)(SystemCoreClock / 2000) - 1;		//To get TIM counter clock = 2KHz
-    const uint16_t MAX_PERIOD = UINT16_MAX;		// 1-65535 us
-	
+
+    // Timer ClockDivision = DIV4
+    const uint16_t SIT_PRESCALERu = (uint16_t)(SystemCoreClock / 1000000) - 1;  //To get TIM counter clock = 1MHz
+    const uint16_t SIT_PRESCALERm = (uint16_t)(SystemCoreClock / 2000) - 1;     //To get TIM counter clock = 2KHz
+    const uint16_t MAX_PERIOD = UINT16_MAX;     // 1-65535 us
+
     static bool SIT_used[NUM_SIT];
     bool allocate_SIT(uint16_t Period, bool scale, TIMid id);
     void start_SIT(uint16_t Period, bool scale);
     void stop_SIT();
     bool status;
     uint8_t SIT_id;
- 	ISRcallback myISRcallback;
-	
+    ISRcallback myISRcallback;
+
     bool beginCycles(void (*isrCallback)(), uint16_t Period, bool scale, TIMid id);
-	
+
   public:
-    IntervalTimer() { 
-        status = TIMER_OFF; 
-        Wiring_TIM2_Interrupt_Handler = Wiring_TIM2_Interrupt_Handler_override;
-        Wiring_TIM3_Interrupt_Handler = Wiring_TIM3_Interrupt_Handler_override;
-        Wiring_TIM4_Interrupt_Handler = Wiring_TIM4_Interrupt_Handler_override;
+    IntervalTimer() {
+        status = TIMER_OFF;
+        HAL_TIM2_Handler = HAL_TIM2_Handler_override;
+        HAL_TIM3_Handler = HAL_TIM3_Handler_override;
+        HAL_TIM4_Handler = HAL_TIM4_Handler_override;
     }
     ~IntervalTimer() { end(); }
-	
+
     bool begin(void (*isrCallback)(), uint16_t Period, bool scale) {
-		if (Period == 0 || Period > MAX_PERIOD)
-			return false;
-		return beginCycles(isrCallback, Period, scale, AUTO);
+        if (Period == 0 || Period > MAX_PERIOD)
+            return false;
+        return beginCycles(isrCallback, Period, scale, AUTO);
     }
-	
+
     bool begin(void (*isrCallback)(), uint16_t Period, bool scale, TIMid id) {
-		if (Period == 0 || Period > MAX_PERIOD)
-			return false;
-		return beginCycles(isrCallback, Period, scale, id);
+        if (Period == 0 || Period > MAX_PERIOD)
+            return false;
+        return beginCycles(isrCallback, Period, scale, id);
     }
-	
+
     void end();
-	void interrupt_SIT(action ACT);
-	void resetPeriod_SIT(uint16_t newPeriod, bool scale);
-	int8_t isAllocated_SIT(void);
-	
+    void interrupt_SIT(action ACT);
+    void resetPeriod_SIT(uint16_t newPeriod, bool scale);
+    int8_t isAllocated_SIT(void);
+
     static ISRcallback SIT_CALLBACK[NUM_SIT];
 };
 
